@@ -1,41 +1,53 @@
+import cv2
 import streamlit as st
+import numpy as np
 
-st.title("Live Webcam Feed with Start/Stop Controls")
+def main():
+    st.title("Webcam Stream using OpenCV and Streamlit")
 
-# HTML and JavaScript for accessing the webcam
-st.markdown(
-    """
-    <video autoplay muted width="640" height="480" id="videoElement"></video>
-    <br>
-    <button id="startButton">Start</button>
-    <button id="stopButton" disabled>Stop</button>
-    
-    <script>
-        let stream;
+    # Initialize session state for start/stop control
+    if 'run' not in st.session_state:
+        st.session_state['run'] = False
 
-        const video = document.getElementById('videoElement');
-        const startButton = document.getElementById('startButton');
-        const stopButton = document.getElementById('stopButton');
+    # "Start" button to toggle webcam streaming
+    if st.button("Start"):
+        st.session_state['run'] = True
 
-        startButton.addEventListener('click', async function() {
-            // Request access to the webcam
-            stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = stream;
-            startButton.disabled = true;
-            stopButton.disabled = false;
-        });
+    # "Stop" button to toggle off webcam streaming
+    if st.button("Stop"):
+        st.session_state['run'] = False
 
-        stopButton.addEventListener('click', function() {
-            // Stop the video stream
-            if (stream) {
-                const tracks = stream.getTracks();
-                tracks.forEach(track => track.stop());
-                video.srcObject = null;
-                startButton.disabled = false;
-                stopButton.disabled = true;
-            }
-        });
-    </script>
-    """,
-    unsafe_allow_html=True
-)
+    # Placeholder for video stream
+    frame_placeholder = st.empty()
+
+    # If "Start" has been pressed, capture video from webcam
+    if st.session_state['run']:
+        cap = cv2.VideoCapture(0)
+
+        # Check if webcam is opened correctly
+        if not cap.isOpened():
+            st.error("Cannot access the webcam!")
+            return
+
+        # Loop to read and display frames in the Streamlit app
+        while st.session_state['run']:
+            ret, frame = cap.read()
+            if not ret:
+                st.warning("Failed to grab frame")
+                break
+
+            # Convert the color from BGR (OpenCV format) to RGB (Streamlit format)
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Update the image in the Streamlit app
+            frame_placeholder.image(frame, channels="RGB")
+
+            # Break the loop if the user clicks the "Stop" button
+            if not st.session_state['run']:
+                break
+
+        # Release the webcam and close the stream
+        cap.release()
+
+if __name__ == "__main__":
+    main()
