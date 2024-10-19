@@ -1,53 +1,67 @@
-import cv2
 import streamlit as st
-import numpy as np
 
-def main():
-    st.title("Webcam Stream using OpenCV and Streamlit")
+st.title("Webcam Stream Example")
 
-    # Initialize session state for start/stop control
-    if 'run' not in st.session_state:
-        st.session_state['run'] = False
+# HTML and JavaScript code to access the webcam
+st.markdown(
+    """
+    <video autoplay playsinline id="videoElement"></video>
+    <button id="captureButton">Capture</button>
+    <canvas id="canvas" style="display: none;"></canvas>
+    <script>
+        var video = document.querySelector("#videoElement");
+        var canvas = document.querySelector("#canvas");
+        var context = canvas.getContext('2d');
+        var captureButton = document.querySelector("#captureButton");
 
-    # "Start" button to toggle webcam streaming
-    if st.button("Start"):
-        st.session_state['run'] = True
+        // Access the webcam
+        if (navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function (stream) {
+                    video.srcObject = stream;
+                })
+                .catch(function (error) {
+                    console.log("Something went wrong!", error);
+                });
+        }
 
-    # "Stop" button to toggle off webcam streaming
-    if st.button("Stop"):
-        st.session_state['run'] = False
+        // Capture the video frame when the button is clicked
+        captureButton.addEventListener('click', function() {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+            var dataURL = canvas.toDataURL('image/png');
+            window.parent.document.getElementById('image-data').value = dataURL; // Set the data URL in a hidden input
+            window.parent.document.getElementById('upload-button').click(); // Trigger upload
+        });
+    </script>
+    """,
+    unsafe_allow_html=True,
+)
 
-    # Placeholder for video stream
-    frame_placeholder = st.empty()
+# Hidden input field to store image data
+st.markdown('<input type="hidden" id="image-data">', unsafe_allow_html=True)
 
-    # If "Start" has been pressed, capture video from webcam
-    if st.session_state['run']:
-        cap = cv2.VideoCapture(0)
+# Button to upload the captured frame
+if st.button("Upload Frame"):
+    # Get the base64 image data from the input field
+    image_data = st.session_state.get('image_data', None)
+    if image_data:
+        # Display the captured image
+        st.image(image_data, caption="Captured Frame", use_column_width=True)
 
-        # Check if webcam is opened correctly
-        if not cap.isOpened():
-            st.error("Cannot access the webcam!")
-            return
+# Use Session State to store captured image data
+if 'image_data' not in st.session_state:
+    st.session_state.image_data = None
 
-        # Loop to read and display frames in the Streamlit app
-        while st.session_state['run']:
-            ret, frame = cap.read()
-            if not ret:
-                st.warning("Failed to grab frame")
-                break
-
-            # Convert the color from BGR (OpenCV format) to RGB (Streamlit format)
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-            # Update the image in the Streamlit app
-            frame_placeholder.image(frame, channels="RGB")
-
-            # Break the loop if the user clicks the "Stop" button
-            if not st.session_state['run']:
-                break
-
-        # Release the webcam and close the stream
-        cap.release()
-
-if __name__ == "__main__":
-    main()
+# Capture image data from JavaScript
+st.write(
+    """
+    <script>
+        document.getElementById("image-data").addEventListener("change", function() {
+            window.parent.streamlit.setComponentValue("image_data", this.value);
+        });
+    </script>
+    """,
+    unsafe_allow_html=True,
+)
