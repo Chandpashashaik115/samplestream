@@ -1,34 +1,23 @@
 import streamlit as st
-import cv2
 
-def main():
-    st.title("Live Webcam Stream with OpenCV")
+st.title("Live Webcam Feed")
 
-    # Create a VideoCapture object
-    video_capture = cv2.VideoCapture(0)
-
-    # Check if the webcam is opened correctly
-    if not video_capture.isOpened():
-        st.error("Error: Could not access the webcam.")
-        return
-
-    # Create a placeholder for the video feed
-    stframe = st.empty()
-
-    while True:
-        ret, frame = video_capture.read()
-        if not ret:
-            st.error("Error: Could not read the frame.")
-            break
-
-        # Convert the frame from BGR to RGB format
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        # Display the frame in the Streamlit app
-        stframe.image(frame)
-
-    # Release the webcam when done
-    video_capture.release()
-
-if __name__ == "__main__":
-    main()
+# HTML and JavaScript for accessing the webcam
+st.markdown(
+    """
+    <video autoplay muted width="640" height="480" id="videoElement"></video>
+    <script>
+        var video = document.getElementById('videoElement');
+        if (navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function(stream) {
+                video.srcObject = stream;
+            })
+            .catch(function(err) {
+                console.error("Error accessing webcam: " + err);
+            });
+        }
+    </script>
+    """,
+    unsafe_allow_html=True
+)
